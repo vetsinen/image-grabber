@@ -16,8 +16,7 @@ class Cli
             exit();
         }
 
-        $url = new Url();
-        $commandUrl = $url->normalize($options[$commandTitle]);
+        $commandUrl = normalize($options[$commandTitle]);
 
 
         switch ($commandTitle) {
@@ -46,13 +45,12 @@ class Cli
         Команда --help  выводит текущую справочную информацию.
         EOD;
         echo $msg;
-
     }
+}
 
-    public function checkUrl(string $url): string
-    {
-        return strpos($url, "https") === false ? "https://{$url}" : $url;
-    }
+function normalize(string $url):string
+{
+    return strpos($url, "https") === false ? "https://{$url}" : $url;
 }
 
 $options = getopt("", ["parse:", "report:", "help"]);
