@@ -1,0 +1,12 @@
+{
+    "name": "vetsinen/parser",
+    "description": "recursive parsing",
+    "type": "project",
+    "authors": [
+        {
+            "name": "vetsinen",
+            "email": "vetsinen@gmail.com"
+        }
+    ],
+    "require": {}
+}
