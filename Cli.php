@@ -9,20 +9,28 @@ class Cli
 {
     function __construct(array $options)
     {
-        switch (key($options)) {
+        $commandTitle = key($options);
+        if ($commandTitle === "help")
+        {
+            $this->help();
+            exit();
+        }
+
+        $url = new Url();
+        $commandUrl = $url->normalize($options[$commandTitle]);
+
+
+        switch ($commandTitle) {
             case "parse":
-                $parser = new Parser($this->checkUrl($options['parse']));
-                echo $parser->parse();
+                $parser = new Parser($commandUrl);
+                echo $parser->execute();
                 break;
+//
+//            case "report":
+//                $reporter = new Reporter($this->checkUrl($options['report']));
+//                echo $reporter->report();
+//                break;
 
-            case "report":
-                $reporter = new Reporter($this->checkUrl($options['report']));
-                echo $reporter->report();
-                break;
-
-            case "help":
-            default:
-                echo $this->help();
         }
 
     }
@@ -41,13 +49,12 @@ class Cli
 
     }
 
-    private function checkUrl(string $url): string
+    public function checkUrl(string $url): string
     {
         return strpos($url, "https") === false ? "https://{$url}" : $url;
     }
 }
 
 $options = getopt("", ["parse:", "report:", "help"]);
-var_dump($options);
 
 new Cli($options);
