@@ -1,3 +1,4 @@
 .idea
 /vendor/
 parse0.php
+reports/*.csv

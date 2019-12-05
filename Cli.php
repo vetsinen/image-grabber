@@ -10,26 +10,22 @@ class Cli
     function __construct(array $options)
     {
         $commandTitle = key($options);
-        if ($commandTitle === "help")
-        {
+        if ($commandTitle === "help") {
             $this->help();
             exit();
         }
 
-        $commandUrl = normalize($options[$commandTitle]);
-
-
+        $commandUrl = ($options[$commandTitle]);
         switch ($commandTitle) {
             case "parse":
                 $parser = new Parser($commandUrl);
                 echo $parser->execute();
                 break;
-//
-//            case "report":
-//                $reporter = new Reporter($this->checkUrl($options['report']));
-//                echo $reporter->report();
-//                break;
 
+            case "report":
+                $reporter = new Report($commandUrl);
+                echo $reporter->execute();
+                break;
         }
 
     }
@@ -48,11 +44,10 @@ class Cli
     }
 }
 
-function normalize(string $url):string
+function normalize(string $url): string
 {
     return strpos($url, "https") === false ? "https://{$url}" : $url;
 }
 
 $options = getopt("", ["parse:", "report:", "help"]);
-
 new Cli($options);

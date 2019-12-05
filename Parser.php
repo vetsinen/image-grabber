@@ -7,6 +7,7 @@ namespace Serpstat;
 class Parser
 {
     private string $url;
+    private string $startpage;
     private $domain;
     private $protocol;
 
@@ -16,29 +17,38 @@ class Parser
     private $file;
 
     private $opts;
+    private array $pageImages;
     public array $links;
 
     function __construct(string $url)
     {
-        $this->url = $url;
+        if ((strpos($url, "https://")===false && strpos($url, "http://")===false)) {
+            $url = "https://{$url}";
+        }
+        $this->startpage = $url;
         $this->domain = parse_url($url, PHP_URL_HOST);
-        $this->protocol = parse_url($url, PHP_URL_SCHEME) ?? "https";
+        $this->protocol = parse_url($url, PHP_URL_SCHEME); // ?? "https";
+
         $this->opts = stream_context_create([
-            'http' => [
+            'https' => [
                 'method' => "GET",
                 'header' => implode('\r\n', ["Accept-language: en", "Cookie: foo=bar"])
             ]
         ]);
+
         $this->links[] = $url;
     }
 
     public function execute(): string
     {
-        if ($content = $this->getContent($this->url)) {
+        if ($content = file_get_contents($this->startpage)) {
+            $currentPath = parse_url($this->startpage, PHP_URL_PATH);
+            $srcs = $this->getImageLinksFromPage($content);
+            $this->pageImages = [$currentPath => $srcs];
+            $rez = $this->getPageLinksFromPage($content);
+            var_dump($rez);
+            return '';
             $this->file = fopen("reports/{$this->domain}.csv", "w");
-
-            $this->parseImages($content, $this->domain . parse_url($this->url, PHP_URL_PATH));
-            $this->parseSubUrls($content);
 
             fclose($this->file);
             return "reports/{$this->domain}.csv";
@@ -47,9 +57,53 @@ class Parser
         }
     }
 
-    /**
-     * @param string $content
-     */
+    function urlNormalize(string $url): string
+    {
+        $url = str_replace('"', '', $url);
+        if (strpos($url, "https://")===false && strpos($url, "http://")===false) {
+            $url = "{$this->protocol}://{$this->domain}/{$url}";
+        }
+        if (!parse_url($url, PHP_URL_PATH)) $url = $url . '/';
+        return $url;
+    }
+
+    private function getImageLinksFromPage(string $content): array
+    {
+        $rez = [];
+        preg_match_all('/<img[^>]+>/i', $content, $result);
+        foreach ($result[0] as $img_tag) {
+            preg_match_all('/(src)=("[^"]*")/i', $img_tag, $img, PREG_SET_ORDER);
+            if ($img) {
+                $rez[] = $this->urlNormalize($img[0][2]);
+            }
+        }
+        return $rez;
+    }
+
+    private function getPageLinksFromPage(string $content): array
+    {
+        $rez = [];
+        $regexp = "<a\s[^>]*href=(\"??)([^\" >]*?)\\1[^>]*>(.*)<\/a>";
+        preg_match_all("/$regexp/siU", $content, $links, PREG_SET_ORDER);
+        if (!empty($links)) {
+            foreach ($links as $link) {
+//                echo "{$link[2]} - {$this->urlNormalize($link[2])} \n";
+                $rez[] = $this->urlNormalize($link[2]);
+            }
+        }
+        return $rez;
+    }
+
+    private function parseImages(string $content, string $domain)
+    {
+        preg_match_all('/<img[^>]+>/i', $content, $result);
+
+        foreach ($result[0] as $img_tag) {
+            preg_match_all('/(src)=("[^"]*")/i', $img_tag, $img, PREG_SET_ORDER);
+            $this->saveImageUrl($domain, $img);
+        }
+    }
+
     private function parseSubUrls(string $content)
     {
         preg_match_all('/(href)=("\/[a-zA-Z^"?]*")/i', $content, $links, PREG_SET_ORDER);
@@ -67,24 +121,6 @@ class Parser
         }
     }
 
-    /**
-     * @param string $content
-     * @param string $domain
-     */
-    private function parseImages(string $content, string $domain)
-    {
-        preg_match_all('/<img[^>]+>/i', $content, $result);
-
-        foreach ($result[0] as $img_tag) {
-            preg_match_all('/(src)=("[^"]*")/i', $img_tag, $img, PREG_SET_ORDER);
-            $this->saveImageUrl($domain, $img);
-        }
-    }
-
-    /**
-     * @param string $domain
-     * @param array $images
-     */
     private function saveImageUrl(string $domain, array $images)
     {
         foreach ($images as $image) {
