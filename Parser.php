@@ -19,15 +19,16 @@ class Parser
     private $opts;
     private array $pageImages;
     public array $links;
+    private object $deadLinks;
 
     function __construct(string $url)
     {
-        if ((strpos($url, "https://")===false && strpos($url, "http://")===false)) {
+        if ((strpos($url, "https://") === false && strpos($url, "http://") === false)) {
             $url = "https://{$url}";
         }
         $this->startpage = $url;
         $this->domain = parse_url($url, PHP_URL_HOST);
-        $this->protocol = parse_url($url, PHP_URL_SCHEME); // ?? "https";
+        $this->protocol = parse_url($url, PHP_URL_SCHEME);
 
         $this->opts = stream_context_create([
             'https' => [
@@ -36,13 +37,50 @@ class Parser
             ]
         ]);
 
-        $this->links[] = $url;
+        $this->imageLinksBasket = [];
+        $this->deadLinks = new Set();
     }
+
+    public function getAbsoluteLinkFromPath(string $path)
+    {
+        return "{$this->protocol}://{$this->domain}{$path}";
+    }
+
+    public function getContentFromPath(string $path)
+    {
+        return file_get_contents("{$this->protocol}://{$this->domain}{$path}");
+    }
+
 
     public function execute(): string
     {
         if ($content = file_get_contents($this->startpage)) {
             $currentPath = parse_url($this->startpage, PHP_URL_PATH);
+            $ptp = [$currentPath];
+            do {
+                $flag = false;
+                $newptp = [];
+                var_dump($ptp);
+                foreach ($ptp as $path) {
+                    if (!key_exists($path, array_keys($this->imageLinksBasket)))
+                    //we have not processed page
+                    {
+                        $flag = true;
+                        $absoluteUrl = $this->getAbsoluteLinkFromPath($path);
+                        $content = $this->getContentFromPath($path);
+                        $srcs = $this->getImageLinksFromPage($content);
+                        if (count($srcs)>0)
+                        {
+                            $this->imageLinksBasket[]=[$path=>$srcs];
+                        }
+                        $pathes = $this->getPageLinksFromPage($content);
+                        $newptp = array_merge($newptp, $pathes);
+                    }
+                }
+                $ptp = $newptp;
+            } while ($flag);
+            var_dump($this->imageLinksBasket);
+            return '';
             $srcs = $this->getImageLinksFromPage($content);
             $this->pageImages = [$currentPath => $srcs];
             $rez = $this->getPageLinksFromPage($content);
@@ -60,7 +98,7 @@ class Parser
     function urlNormalize(string $url): string
     {
         $url = str_replace('"', '', $url);
-        if (strpos($url, "https://")===false && strpos($url, "http://")===false) {
+        if (strpos($url, "https://") === false && strpos($url, "http://") === false) {
             $url = "{$this->protocol}://{$this->domain}/{$url}";
         }
         if (!parse_url($url, PHP_URL_PATH)) $url = $url . '/';
@@ -88,7 +126,12 @@ class Parser
         if (!empty($links)) {
             foreach ($links as $link) {
 //                echo "{$link[2]} - {$this->urlNormalize($link[2])} \n";
-                $rez[] = $this->urlNormalize($link[2]);
+                $fulllink = $this->urlNormalize($link[2]);
+                if (file_get_contents($fulllink) &&
+                    !in_array(parse_url($fulllink, PHP_URL_PATH), $rez))
+                {
+                    $rez[] = parse_url($fulllink, PHP_URL_PATH);
+                }
             }
         }
         return $rez;
@@ -156,4 +199,28 @@ class Parser
     {
         return file_get_contents($url, false, $this->opts);
     }
+    private function checkUrl(string $url)
+    {
+        $opts = stream_context_create([
+            'http' => [
+                'method' => "HEAD",
+                'header' => implode('\r\n', ["Accept-language: en", "Cookie: foo=bar"])
+            ]
+        ]);
+        return file_get_contents($url,false,$opts)==="";
+    }
+}
+
+class Set
+{
+    public $set=[];
+    public function add($el)
+    {
+        if (!in_array($el,$this->set)){$this->set[]=$el;}
+    }
+    public function exists($el)
+    {
+        return in_array($el,$this->set);
+    }
+    public function clear(){$this->set=[];}
 }

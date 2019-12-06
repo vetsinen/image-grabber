@@ -1,14 +1,26 @@
 <?php
-$url = 'https://geeksforgeeks.org';
 
-function normalize($url)
-{
-    if (strpos($url, "https://")===false && strpos($url, "http://")===false) {
-        $url = "https://{$url}";
-    }
-    return $url;
-};
-echo normalize('http://mozilla.org');
+$opts = stream_context_create([
+    'http' => [
+        'method' => "HEAD",
+        'header' => implode('\r\n', ["Accept-language: en", "Cookie: foo=bar"])
+    ]
+]);
+$a = file_get_contents('https://meta9.ua',false, $opts);
+var_dump($a==='');
+
+//var_dump(array_keys($arr));
+
+//$url = 'https://geeksforgeeks.org';
+//
+//function normalize($url)
+//{
+//    if (strpos($url, "https://")===false && strpos($url, "http://")===false) {
+//        $url = "https://{$url}";
+//    }
+//    return $url;
+//};
+//echo normalize('http://mozilla.org');
 
 // Original PHP code by Chirp Internet: www.chirp.com.au
 // Please acknowledge use of this code by including this header.
