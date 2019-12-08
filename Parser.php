@@ -73,7 +73,9 @@ class Parser
             do {
                 $flag = false;
                 $newptp = [];
-                if (!$ptp) {continue;}
+                if (!$ptp) {
+                    continue;
+                }
                 foreach ($ptp as $path) {
                     if ($this->isAlive($path)) //we have not processed page
                     {
@@ -83,7 +85,7 @@ class Parser
                         $content = $this->getContentFromPath($path);
                         $srcs = $this->getImageLinksFromPage($content);
                         if (count($srcs) > 0) {
-                            $this->imageLinksBasket[] = [$path => $srcs];
+                            $this->imageLinksBasket[$path] = $srcs;
                         }
                         $pathes = $this->getPageLinksFromPage($content);
                         $this->markAsDead($path);
@@ -138,7 +140,7 @@ class Parser
         return $rez;
     }
 
-    private function getPageLinksFromPage(string $content)
+    private function getPageLinksFromPage(string $content): array
     {
         $rez = [];
         $regexp = "<a\s[^>]*href=(\"??)([^\" >]*?)\\1[^>]*>(.*)<\/a>";
@@ -163,21 +165,22 @@ class Parser
 
                     if ($this->isAlive($fulllink) &&
                         !$this->isAlienDomainLink($fulllink) &&
-                        !in_array(parse_url($fulllink, PHP_URL_PATH), $rez)) {
+                        !in_array(parse_url($fulllink, PHP_URL_PATH), $rez))
+                    {
                         $rez[] = parse_url($fulllink, PHP_URL_PATH);
                     }
-
                 }
             }
-            return $rez;
         }
+        return $rez;
     }
 
     private function saveImageLinks()
     {
         foreach ($this->imageLinksBasket as $key => $images) {
+
             foreach ($images as $image) {
-                echo "$key - $image";
+                echo "$key $image";
             }
         }
         //fputcsv($this->file, [$domain, $this->checkImageUrl($image[2], $domain)], ";");
@@ -207,6 +210,6 @@ class Parser
     private function isAlienDomainLink($link)
     {
         return $this->isAbsoluteHttpOrHttpsLink($link)
-            && parse_url($link , PHP_URL_HOST)!== $this->domain;
+            && parse_url($link, PHP_URL_HOST) !== $this->domain;
     }
 }
