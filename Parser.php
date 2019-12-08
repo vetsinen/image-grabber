@@ -74,9 +74,11 @@ class Parser
                 $flag = false;
                 $newptp = [];
                 var_dump($ptp);
+                if (!$ptp){continue;}
                 foreach ($ptp as $path) {
                     if ($this->isAlive($path)) //we have not processed page
                     {
+                        echo "investigating $path...\n";
                         $flag = true;
                         $absoluteUrl = $this->getAbsoluteLinkFromPath($path);
                         $content = $this->getContentFromPath($path);
@@ -142,7 +144,7 @@ class Parser
         return $rez;
     }
 
-    private function getPageLinksFromPage(string $content): array
+    private function getPageLinksFromPage(string $content)
     {
         $rez = [];
         $regexp = "<a\s[^>]*href=(\"??)([^\" >]*?)\\1[^>]*>(.*)<\/a>";
