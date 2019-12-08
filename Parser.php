@@ -73,8 +73,7 @@ class Parser
             do {
                 $flag = false;
                 $newptp = [];
-                var_dump($ptp);
-                if (!$ptp){continue;}
+                if (!$ptp) {continue;}
                 foreach ($ptp as $path) {
                     if ($this->isAlive($path)) //we have not processed page
                     {
@@ -87,9 +86,6 @@ class Parser
                             $this->imageLinksBasket[] = [$path => $srcs];
                         }
                         $pathes = $this->getPageLinksFromPage($content);
-//                        if (count($srcs) === 0) {
-//                            $this->markAsDead($path);
-//                        }
                         $this->markAsDead($path);
                         $newptp = array_merge($newptp, $pathes);
                     } else {
@@ -99,11 +95,7 @@ class Parser
                 $ptp = $newptp;
             } while ($flag);
             var_dump($this->imageLinksBasket);
-            return '';
-            $srcs = $this->getImageLinksFromPage($content);
-            $this->pageImages = [$currentPath => $srcs];
-            $rez = $this->getPageLinksFromPage($content);
-            var_dump($this->imageLinksBasket);
+            $this->saveImageLinks();
             return '';
             $this->file = fopen("reports/{$this->domain}.csv", "w");
 
@@ -117,11 +109,13 @@ class Parser
     function urlNormalize(string $url): string
     {
         $url = str_replace('"', '', $url);
-        $url=trim($url);
-        if (strlen($url)<1 ){$url='/';}
+        $url = trim($url);
+        if (strlen($url) < 1) {
+            $url = '/';
+        }
 
         if (!$this->isAbsoluteHttpOrHttpsLink($url)) {
-            if ( $url[0] !== '/') {
+            if ($url[0] !== '/') {
                 $url = '/' . $url;
             }
             $url = "{$this->protocol}://{$this->domain}{$url}";
@@ -163,12 +157,13 @@ class Parser
 //                        $this->checkUrl($fulllink) &&
 //                        !in_array(parse_url($fulllink, PHP_URL_PATH), $rez)?"added\n":"wrong\n";
 
-                    if (!$this->isAlive($fulllink)){$this->markAsDead($fulllink);}
+                    if (!$this->isAlive($fulllink)) {
+                        $this->markAsDead($fulllink);
+                    }
 
                     if ($this->isAlive($fulllink) &&
                         !$this->isAlienDomainLink($fulllink) &&
-                        !in_array(parse_url($fulllink, PHP_URL_PATH), $rez))
-                    {
+                        !in_array(parse_url($fulllink, PHP_URL_PATH), $rez)) {
                         $rez[] = parse_url($fulllink, PHP_URL_PATH);
                     }
 
@@ -185,7 +180,7 @@ class Parser
                 echo "$key - $image";
             }
         }
-        fputcsv($this->file, [$domain, $this->checkImageUrl($image[2], $domain)], ";");
+        //fputcsv($this->file, [$domain, $this->checkImageUrl($image[2], $domain)], ";");
     }
 
     private function getContent(string $url): string
@@ -204,29 +199,14 @@ class Parser
         return file_get_contents($url, false, $opts) === "";
     }
 
-    private
-    function isAbsoluteHttpOrHttpsLink($link)
+    private function isAbsoluteHttpOrHttpsLink($link)
     {
         return strpos($link, "https://") > -1 || strpos($link, "http://") > -1;
     }
 
-    private
-    function isAlienDomainLink($link)
+    private function isAlienDomainLink($link)
     {
-        return $this->isAbsoluteHttpOrHttpsLink($link) && parse_url($link !== $this->domain, PHP_URL_HOST);
-    }
-
-    private
-    function checkImageUrl(string $url, string $domain): string
-    {
-        $url = trim($url, '""');
-        switch ($url[0]) {
-            case "/":
-                return trim($domain, "/") . $url;
-            case "h":
-                return $url;
-            default:
-                return "{$domain}/{$url}";
-        }
+        return $this->isAbsoluteHttpOrHttpsLink($link)
+            && parse_url($link , PHP_URL_HOST)!== $this->domain;
     }
 }
