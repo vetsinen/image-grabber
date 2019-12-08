@@ -1,10 +1,12 @@
 <?php
+$a = false;
+echo $a?1:0;
 //var_dump(parse_url('https://nail-salon-473.business.site', PHP_URL_PATH));
-function isAbsoluteHttpOrHttpsLink($link)
-{
-    return strpos($link, "https://") >-1 || strpos($link, "http://") > -1;
-}
-var_dump(isAbsoluteHttpOrHttpsLink('/nail-salon-473.business.site'));
+//function isAbsoluteHttpOrHttpsLink($link)
+//{
+//    return strpos($link, "https://") >-1 || strpos($link, "http://") > -1;
+//}
+//var_dump(isAbsoluteHttpOrHttpsLink('/nail-salon-473.business.site'));
 
 //function isAbsoluteHttpOrHttpsLink($link)
 //{

@@ -62,7 +62,7 @@ class Parser
 
     public function isAlive(string $el)
     {
-        return !in_array($el, $this->deadLinks) && $this->checkUrl($this->getAbsoluteLinkFromPath($el));
+        return !in_array($el, $this->deadLinks) && $this->checkUrl($this->urlNormalize($el));
     }
 
     public function execute(): string
@@ -85,9 +85,10 @@ class Parser
                             $this->imageLinksBasket[] = [$path => $srcs];
                         }
                         $pathes = $this->getPageLinksFromPage($content);
-                        if (count($srcs) === 0) {
-                            $this->markAsDead($path);
-                        }
+//                        if (count($srcs) === 0) {
+//                            $this->markAsDead($path);
+//                        }
+                        $this->markAsDead($path);
                         $newptp = array_merge($newptp, $pathes);
                     } else {
                         $this->markAsDead($path);
@@ -100,7 +101,7 @@ class Parser
             $srcs = $this->getImageLinksFromPage($content);
             $this->pageImages = [$currentPath => $srcs];
             $rez = $this->getPageLinksFromPage($content);
-            var_dump($rez);
+            var_dump($this->imageLinksBasket);
             return '';
             $this->file = fopen("reports/{$this->domain}.csv", "w");
 
@@ -115,9 +116,10 @@ class Parser
     {
         $url = str_replace('"', '', $url);
         $url=trim($url);
+        if (strlen($url)<1 ){$url='/';}
 
         if (!$this->isAbsoluteHttpOrHttpsLink($url)) {
-            if ($url[0] !== '/') {
+            if ( $url[0] !== '/') {
                 $url = '/' . $url;
             }
             $url = "{$this->protocol}://{$this->domain}{$url}";
@@ -151,13 +153,23 @@ class Parser
                 {
                     $fulllink = $this->urlNormalize($link[2]);
                     $domain = parse_url($fulllink, PHP_URL_HOST);
-                    echo "before norm: " . $link[2] . "=>";
-                    echo $fulllink;
-                    echo $domain === $this->domain ? "\n" : " -external link\n";
-                    if ($domain === $this->domain && file_get_contents($fulllink) &&
-                        !in_array(parse_url($fulllink, PHP_URL_PATH), $rez)) {
+//                    echo "before norm: " . $link[2] . "=>";
+//                    echo $fulllink;
+//                    echo $domain === $this->domain ? "\n" : " -external link\n";
+//                    echo "fulllink: $fulllink ";
+//                    echo !$this->isAlienDomainLink($fulllink) &&
+//                        $this->checkUrl($fulllink) &&
+//                        !in_array(parse_url($fulllink, PHP_URL_PATH), $rez)?"added\n":"wrong\n";
+
+                    if (!$this->isAlive($fulllink)){$this->markAsDead($fulllink);}
+
+                    if ($this->isAlive($fulllink) &&
+                        !$this->isAlienDomainLink($fulllink) &&
+                        !in_array(parse_url($fulllink, PHP_URL_PATH), $rez))
+                    {
                         $rez[] = parse_url($fulllink, PHP_URL_PATH);
                     }
+
                 }
             }
             return $rez;
