@@ -33,12 +33,15 @@ class Cli
     private function help(): void
     {
         $msg = <<<'EOD'
-        Usage: ./Cli.php <command>
+        Usage: ./Cli.php <command> <site domain>
         command is mandatory parameter
-        Команда --parse - запускает парсер, принимает обязательный параметр url (как с протоколом, так и без).
-        Команда --report - выводит в консоль результаты анализа для домена,
-        принимает обязательный параметр domain (как с протоколом, так и без).
-        Команда --help  выводит текущую справочную информацию.
+        <site domain> can include protocol
+        command --parse - laucnh parsing of url.
+        command --report - prints results of parser
+        command --help  prints this help.
+
+        for example:
+         php Cli.php --parse https://nail-salon-473.business.site/
         EOD;
         echo $msg;
     }
