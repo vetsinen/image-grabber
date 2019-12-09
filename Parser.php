@@ -1,46 +1,72 @@
 <?php
 
-
 namespace Serpstat;
 
 
-use http\Url;
-
 class Parser
 {
-    private string $url;
     private string $startpage;
     private $domain;
     private $protocol;
-
-    /**
-     * @var resource
-     */
     private $file;
-
-    private $opts;
-    private array $pageImages;
-    public array $links;
+    private array $imageLinksBasket;
     private array $deadLinks;
 
     function __construct(string $url)
     {
-        if ((strpos($url, "https://") === false && strpos($url, "http://") === false)) {
+        $url = trim($url);
+        if ((strpos($url, "https://") !== 0 && strpos($url, "http://") !== 0))
+        {
             $url = "https://{$url}";
         }
-        $this->startpage = $url;
         $this->domain = parse_url($url, PHP_URL_HOST);
         echo $this->domain;
         $this->protocol = parse_url($url, PHP_URL_SCHEME);
-        $this->opts = stream_context_create([
-            'https' => [
-                'method' => "GET",
-                'header' => implode('\r\n', ["Accept-language: en", "Cookie: foo=bar"])
-            ]
-        ]);
-
+        $this->startpage = $this->urlNormalize($url);
         $this->imageLinksBasket = [];
         $this->deadLinks = [];
+    }
+
+    public function execute(): string
+    {
+        if ($content = file_get_contents($this->startpage) &&
+            $this->file = fopen("reports/{$this->domain}.csv", "w")) {
+            $currentPath = parse_url($this->startpage, PHP_URL_PATH);
+            $ptp = [$currentPath];
+            do {
+                $flag = false;
+                $newptp = [];
+                if (!$ptp) continue;
+
+                foreach ($ptp as $path) {
+                    if ($this->isAlive($path)) //we have not processed page
+                    {
+                        echo "investigating $path...\n";
+                        $flag = true;
+                        $absoluteUrl = $this->getAbsoluteLinkFromPath($path);
+                        $content = $this->getContentFromPath($path);
+                        $srcs = $this->getImageLinksFromPage($content);
+                        if (count($srcs) > 0) {
+                            $this->imageLinksBasket[$path] = $srcs;
+                        }
+                        $pathes = $this->getPageLinksFromPage($content);
+                        $this->markAsDead($path);
+                        $newptp = array_merge($newptp, $pathes);
+                    }
+                    $this->markAsDead($path);
+                }
+                $ptp = $newptp;
+            } while ($flag);
+            $this->saveImageLinks();
+            fclose($this->file);
+            return "reports/{$this->domain}.csv";
+        } else {
+            return "Failed to parse url : {$this->startpage} " . PHP_EOL;
+        }
+    }
+    public function isAlive(string $el)
+    {
+        return !in_array($el, $this->deadLinks) && $this->checkUrl($this->urlNormalize($el));
     }
 
     public function getAbsoluteLinkFromPath(string $path)
@@ -60,50 +86,9 @@ class Parser
         }
     }
 
-    public function isAlive(string $el)
-    {
-        return !in_array($el, $this->deadLinks) && $this->checkUrl($this->urlNormalize($el));
-    }
 
-    public function execute(): string
-    {
-        if ($content = file_get_contents($this->startpage && $this->file = fopen("reports/{$this->domain}.csv", "w"))) {
-            $currentPath = parse_url($this->startpage, PHP_URL_PATH);
-            $ptp = [$currentPath];
-            do {
-                $flag = false;
-                $newptp = [];
-                if (!$ptp) {
-                    continue;
-                }
-                foreach ($ptp as $path) {
-                    if ($this->isAlive($path)) //we have not processed page
-                    {
-                        echo "investigating $path...\n";
-                        $flag = true;
-                        $absoluteUrl = $this->getAbsoluteLinkFromPath($path);
-                        $content = $this->getContentFromPath($path);
-                        $srcs = $this->getImageLinksFromPage($content);
-                        if (count($srcs) > 0) {
-                            $this->imageLinksBasket[$path] = $srcs;
-                        }
-                        $pathes = $this->getPageLinksFromPage($content);
-                        $this->markAsDead($path);
-                        $newptp = array_merge($newptp, $pathes);
-                    } else {
-                        $this->markAsDead($path);
-                    }
-                }
-                $ptp = $newptp;
-            } while ($flag);
-            var_dump($this->imageLinksBasket);
-            $this->saveImageLinks();
-            fclose($this->file);
-            return "reports/{$this->domain}.csv";
-        } else {
-            return "Failed to parse url : {$this->startpage} " . PHP_EOL;
-        }
-    }
+
+
 
     function urlNormalize(string $url): string
     {
@@ -175,11 +160,10 @@ class Parser
     private function saveImageLinks()
     {
         foreach ($this->imageLinksBasket as $key => $images) {
-
-            foreach ($images as $image) {
+            foreach ($images as $imageLink) {
                 $fulllink = $this->urlNormalize($key);
-                echo "$fulllink $image/n";
-                fputcsv($this->file, [$fulllink, $image], ";")
+//                echo "$fulllink $imageLink/n";
+                fputcsv($this->file, [$fulllink, $imageLink], ";");
             }
         }
         //fputcsv($this->file, [$domain, $this->checkImageUrl($image[2], $domain)], ";");
