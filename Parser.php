@@ -67,7 +67,7 @@ class Parser
 
     public function execute(): string
     {
-        if ($content = file_get_contents($this->startpage)) {
+        if ($content = file_get_contents($this->startpage && $this->file = fopen("reports/{$this->domain}.csv", "w"))) {
             $currentPath = parse_url($this->startpage, PHP_URL_PATH);
             $ptp = [$currentPath];
             do {
@@ -98,13 +98,10 @@ class Parser
             } while ($flag);
             var_dump($this->imageLinksBasket);
             $this->saveImageLinks();
-            return '';
-            $this->file = fopen("reports/{$this->domain}.csv", "w");
-
             fclose($this->file);
             return "reports/{$this->domain}.csv";
         } else {
-            return "Failed to parse url : {$this->url} " . PHP_EOL;
+            return "Failed to parse url : {$this->startpage} " . PHP_EOL;
         }
     }
 
@@ -159,14 +156,14 @@ class Parser
 //                        $this->checkUrl($fulllink) &&
 //                        !in_array(parse_url($fulllink, PHP_URL_PATH), $rez)?"added\n":"wrong\n";
 
-                    if (!$this->isAlive($fulllink)) {
+                    if ($this->isAlienDomainLink($fulllink) || !$this->isAlive($fulllink)) {
                         $this->markAsDead($fulllink);
                     }
 
-                    if ($this->isAlive($fulllink) &&
-                        !$this->isAlienDomainLink($fulllink) &&
-                        !in_array(parse_url($fulllink, PHP_URL_PATH), $rez))
-                    {
+                    if (
+//                        $this->isAlive($fulllink) &&
+//                        !$this->isAlienDomainLink($fulllink) &&
+                    !in_array(parse_url($fulllink, PHP_URL_PATH), $rez)) {
                         $rez[] = parse_url($fulllink, PHP_URL_PATH);
                     }
                 }
@@ -180,7 +177,9 @@ class Parser
         foreach ($this->imageLinksBasket as $key => $images) {
 
             foreach ($images as $image) {
-                echo "$key $image";
+                $fulllink = $this->urlNormalize($key);
+                echo "$fulllink $image/n";
+                fputcsv($this->file, [$fulllink, $image], ";")
             }
         }
         //fputcsv($this->file, [$domain, $this->checkImageUrl($image[2], $domain)], ";");
@@ -204,7 +203,7 @@ class Parser
 
     private function isAbsoluteHttpOrHttpsLink($link)
     {
-        return strpos($link, "https://") > -1 || strpos($link, "http://") > -1;
+        return strpos($link, "https://") === 0 || strpos($link, "http://") === 0;
     }
 
     private function isAlienDomainLink($link)
